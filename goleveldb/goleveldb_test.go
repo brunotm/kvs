@@ -47,7 +47,7 @@ func TestLeveldb_CRUD(t *testing.T) {
 	is.NoErr(err)
 
 	// Set a key/value
-	err = store.Set(testKey, testValue)
+	err = store.Set(testValue, testKey)
 	is.NoErr(err)
 
 	// Check if key exists
@@ -70,7 +70,7 @@ func TestLeveldb_CRUD(t *testing.T) {
 	is.True(exists == false)
 
 	// Try set with empty key
-	err = store.Set("", testValue)
+	err = store.Set(testValue, "")
 	is.True(err == kvs.ErrBadKey)
 
 	// Try get with empty key
@@ -88,7 +88,7 @@ func TestLeveldb_CRUD_TTL(t *testing.T) {
 	is.NoErr(err)
 
 	// Set a key/value with ttl
-	err = store.SetWithTTL(testKey, testValue, time.Millisecond*2)
+	err = store.SetWithTTL(testValue, time.Millisecond*2, testKey)
 	is.NoErr(err)
 
 	// Check if key exists
@@ -105,7 +105,7 @@ func TestLeveldb_CRUD_TTL(t *testing.T) {
 	is.True(exists == false)
 
 	// Set a key/value with ttl
-	err = store.SetWithTTL(testKey, testValue, time.Millisecond*2)
+	err = store.SetWithTTL(testValue, time.Millisecond*2, testKey)
 	is.NoErr(err)
 
 	// Get key/value
@@ -137,7 +137,7 @@ func TestLeveldb_CRUD_TREE(t *testing.T) {
 
 	// Set key/values
 	for x := 0; x < 10; x++ {
-		err = store.Set(testKey+strconv.Itoa(x), testValue)
+		err = store.Set(testValue, testKey+strconv.Itoa(x))
 		is.NoErr(err)
 	}
 

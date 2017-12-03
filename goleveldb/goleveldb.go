@@ -3,6 +3,7 @@ package goleveldb
 import (
 	"encoding/binary"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +19,7 @@ var _ kvs.Store = (*Store)(nil)
 
 const (
 	gcInterval = uint64(time.Hour)
+	pathSep    = ":"
 )
 
 var (
@@ -45,7 +47,6 @@ func New(path string) (store *Store, err error) {
 	if store.db, err = leveldb.OpenFile(path, dopt); err != nil {
 		return nil, err
 	}
-	store.open = 1
 	store.path = path
 	store.done = make(chan struct{})
 
@@ -65,7 +66,7 @@ func (s *Store) Remove() (err error) {
 
 // Close the store
 func (s *Store) Close() (err error) {
-	if atomic.CompareAndSwapUint32(&s.open, 1, 0) {
+	if atomic.CompareAndSwapUint32(&s.open, 0, 1) {
 		close(s.done)
 		return s.db.Close()
 	}
@@ -73,8 +74,8 @@ func (s *Store) Close() (err error) {
 }
 
 // Has returns true if the store does contains the given key
-func (s *Store) Has(key string) (exists bool, err error) {
-	_, err = s.Get(key)
+func (s *Store) Has(path ...string) (exists bool, err error) {
+	_, err = s.Get(path...)
 	if err == nil {
 		return true, nil
 	}
@@ -87,17 +88,18 @@ func (s *Store) Has(key string) (exists bool, err error) {
 }
 
 // Set the value for the given key
-func (s *Store) Set(key string, value []byte) (err error) {
-	return s.set(key, value, 0)
+func (s *Store) Set(value []byte, path ...string) (err error) {
+	return s.set(strings.Join(path, pathSep), value, 0)
 }
 
 // SetWithTTL the value for the given key with a time to live
-func (s *Store) SetWithTTL(key string, value []byte, ttl time.Duration) (err error) {
-	return s.set(key, value, ttl)
+func (s *Store) SetWithTTL(value []byte, ttl time.Duration, path ...string) (err error) {
+	return s.set(strings.Join(path, pathSep), value, ttl)
 }
 
 // Get the value for the given key
-func (s *Store) Get(key string) (value []byte, err error) {
+func (s *Store) Get(path ...string) (value []byte, err error) {
+	key := strings.Join(path, pathSep)
 	if key == "" {
 		return nil, kvs.ErrBadKey
 	}
@@ -114,12 +116,15 @@ func (s *Store) Get(key string) (value []byte, err error) {
 }
 
 // Delete the value for the given key
-func (s *Store) Delete(key string) (err error) {
+func (s *Store) Delete(path ...string) (err error) {
+	key := strings.Join(path, pathSep)
 	return s.db.Delete([]byte(key), wopt)
 }
 
 // GetTree returns the values for keys under the given prefix
-func (s *Store) GetTree(prefix string) (values [][]byte, err error) {
+func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
+	prefix := strings.Join(path, pathSep)
+
 	iter := s.getIter([]byte(prefix))
 	defer iter.Release()
 
@@ -134,7 +139,9 @@ func (s *Store) GetTree(prefix string) (values [][]byte, err error) {
 }
 
 // DeleteTree deletes the values for keys under the given prefix
-func (s *Store) DeleteTree(prefix string) (err error) {
+func (s *Store) DeleteTree(path ...string) (err error) {
+	prefix := strings.Join(path, pathSep)
+
 	batch := &leveldb.Batch{}
 	iter := s.getIter([]byte(prefix))
 	defer iter.Release()
