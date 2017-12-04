@@ -8,12 +8,12 @@ import (
 var (
 	// ErrNotFound key not found
 	ErrNotFound = errors.New("kvs: key not found")
-	// ErrBadKey empty key
-	ErrBadKey = errors.New("kvs: bad key")
 )
 
 // Store interface
 type Store interface {
+	// NewBatch creates a new kvs.Batch
+	NewBatch() (batch Batch)
 	// Has returns true if the store does contains the given key
 	Has(path ...string) (exists bool, err error)
 	// Get the value for the given key
@@ -34,4 +34,16 @@ type Store interface {
 	Close() (err error)
 	// Remove closes and remove the store
 	Remove() (err error)
+}
+
+// Batch interface
+type Batch interface {
+	// Set the value for the given key
+	Set(value []byte, path ...string)
+	// SetWithTTL the value for the given key with a time to live
+	SetWithTTL(value []byte, ttl time.Duration, path ...string)
+	// Delete the value for the given key
+	Delete(path ...string)
+	// Commit writes the batch
+	Write() (err error)
 }
