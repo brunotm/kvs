@@ -18,7 +18,7 @@ var (
 	testValue = []byte(`testValue`)
 )
 
-func TestLeveldbNewCloseRemove(t *testing.T) {
+func TestNewCloseRemove(t *testing.T) {
 	is := is.New(t)
 
 	// Create a new store
@@ -39,7 +39,7 @@ func TestLeveldbNewCloseRemove(t *testing.T) {
 	is.NoErr(store.Remove())
 }
 
-func TestLeveldb_CRUD(t *testing.T) {
+func TestCRUD(t *testing.T) {
 	is := is.New(t)
 
 	// Create a new store
@@ -80,7 +80,7 @@ func TestLeveldb_CRUD(t *testing.T) {
 	is.NoErr(store.Remove())
 }
 
-func TestLeveldb_CRUD_TTL(t *testing.T) {
+func TestCRUDTTL(t *testing.T) {
 	is := is.New(t)
 
 	// Create a new store
@@ -128,7 +128,7 @@ func TestLeveldb_CRUD_TTL(t *testing.T) {
 	is.NoErr(store.Remove())
 }
 
-func TestLeveldb_CRUD_TREE(t *testing.T) {
+func TestCRUDTree(t *testing.T) {
 	is := is.New(t)
 
 	// Create a new store
@@ -163,4 +163,27 @@ func TestLeveldb_CRUD_TREE(t *testing.T) {
 	is.True(exists == false)
 
 	is.NoErr(store.Remove())
+}
+
+func BenchmarkInsertGet(b *testing.B) {
+	store, err := New(testPath)
+	defer store.Remove()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		for x := 0; x < 100; x++ {
+			k := testKey + strconv.Itoa(x)
+			err := store.Set(testValue, k)
+			if err != nil {
+				panic(err)
+			}
+			_, err = store.Get(k)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 }
