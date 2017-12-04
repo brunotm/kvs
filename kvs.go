@@ -7,9 +7,9 @@ import (
 
 var (
 	// ErrNotFound key not found
-	ErrNotFound = errors.New("kvstore: key not found")
+	ErrNotFound = errors.New("kvs: key not found")
 	// ErrBadKey empty key
-	ErrBadKey = errors.New("kvstore: bad value")
+	ErrBadKey = errors.New("kvs: bad key")
 )
 
 // Store interface
