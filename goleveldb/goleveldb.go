@@ -39,22 +39,22 @@ type Store struct {
 }
 
 // New creates or open a existing Store
-func New(path string) (store *Store, err error) {
+func New(path string) (store kvs.Store, err error) {
 	if err = os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
 
-	store = &Store{}
-	if store.db, err = leveldb.OpenFile(path, dopt); err != nil {
+	s := &Store{}
+	if s.db, err = leveldb.OpenFile(path, dopt); err != nil {
 		return nil, err
 	}
-	store.path = path
-	store.done = make(chan struct{})
+	s.path = path
+	s.done = make(chan struct{})
 
-	store.time = uint64(time.Now().UnixNano())
-	go store.keeper()
+	s.time = uint64(time.Now().UnixNano())
+	go s.keeper()
 
-	return store, nil
+	return s, nil
 }
 
 // Remove closes and remove the store
@@ -102,10 +102,6 @@ func (s *Store) SetWithTTL(value []byte, ttl time.Duration, path ...string) (err
 func (s *Store) Get(path ...string) (value []byte, err error) {
 	key := []byte(strings.Join(path, pathSep))
 
-	if len(key) == 0 {
-		return nil, kvs.ErrBadKey
-	}
-
 	if value, err = s.db.Get(key, ropt); err == leveldb.ErrNotFound {
 		return nil, kvs.ErrNotFound
 	}
@@ -125,6 +121,7 @@ func (s *Store) Delete(path ...string) (err error) {
 
 // GetTree returns the values for keys under the given prefix
 func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
+	// TODO: use db snapshot
 	prefix := []byte(strings.Join(path, pathSep))
 
 	iter := s.getIter(prefix)
@@ -142,6 +139,7 @@ func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
 
 // DeleteTree deletes the values for keys under the given prefix
 func (s *Store) DeleteTree(path ...string) (err error) {
+	// TODO: use db snapshot
 	prefix := []byte(strings.Join(path, pathSep))
 
 	batch := &leveldb.Batch{}
@@ -160,23 +158,11 @@ func (s *Store) DeleteTree(path ...string) (err error) {
 }
 
 func (s *Store) set(key string, value []byte, ttl time.Duration) (err error) {
-	if key == "" {
-		return kvs.ErrBadKey
-	}
-
-	buf := make([]byte, 8+len(value))
-	if ttl > 0 {
-		binary.LittleEndian.PutUint64(
-			buf[:8],
-			atomic.LoadUint64(&s.time)+uint64(ttl.Nanoseconds()),
-		)
-	}
-
-	copy(buf[8:], value)
-	return s.db.Put([]byte(key), buf, wopt)
+	return s.db.Put([]byte(key), s.encodeTTL(value, ttl), wopt)
 }
 
 func (s *Store) expire() (err error) {
+	// TODO: use transaction
 	batch := &leveldb.Batch{}
 	iter := s.getIter(nil)
 	defer iter.Release()
@@ -200,7 +186,7 @@ func (s *Store) getIter(prefix []byte) (iter iterator.Iterator) {
 
 func (s *Store) isExpired(value []byte) (expired bool) {
 	if ttl := binary.LittleEndian.Uint64(value[:8]); ttl > 0 {
-		return ttl < atomic.LoadUint64(&s.time)
+		return ttl <= atomic.LoadUint64(&s.time)
 	}
 	return false
 }
@@ -225,4 +211,17 @@ func (s *Store) keeper() {
 			}
 		}
 	}
+}
+
+func (s *Store) encodeTTL(value []byte, ttl time.Duration) (block []byte) {
+	block = make([]byte, 8+len(value))
+	if ttl > 0 {
+		binary.LittleEndian.PutUint64(
+			block[:8],
+			atomic.LoadUint64(&s.time)+uint64(ttl.Nanoseconds()),
+		)
+	}
+
+	copy(block[8:], value)
+	return block
 }
