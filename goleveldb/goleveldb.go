@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/brunotm/kvs"
+	"github.com/brunotm/kvs/utils"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
-
-// Check if Store satisfies kvs.Store interface.
-var _ kvs.Store = (*Store)(nil)
 
 const (
 	gcInterval = uint64(time.Hour)
@@ -28,6 +26,9 @@ var (
 	ropt *opt.ReadOptions
 )
 
+// Check if Store satisfies kvs.Store interface.
+var _ kvs.Store = (*Store)(nil)
+
 // Store leveldb
 type Store struct {
 	db   *leveldb.DB
@@ -37,7 +38,7 @@ type Store struct {
 	done chan struct{}
 }
 
-// New creates or open a existing goleveldb Store
+// New creates or open a existing Store
 func New(path string) (store *Store, err error) {
 	if err = os.MkdirAll(path, 0755); err != nil {
 		return nil, err
@@ -99,12 +100,13 @@ func (s *Store) SetWithTTL(value []byte, ttl time.Duration, path ...string) (err
 
 // Get the value for the given key
 func (s *Store) Get(path ...string) (value []byte, err error) {
-	key := strings.Join(path, pathSep)
-	if key == "" {
+	key := []byte(strings.Join(path, pathSep))
+
+	if len(key) == 0 {
 		return nil, kvs.ErrBadKey
 	}
 
-	if value, err = s.db.Get([]byte(key), ropt); err == leveldb.ErrNotFound {
+	if value, err = s.db.Get(key, ropt); err == leveldb.ErrNotFound {
 		return nil, kvs.ErrNotFound
 	}
 
@@ -117,21 +119,21 @@ func (s *Store) Get(path ...string) (value []byte, err error) {
 
 // Delete the value for the given key
 func (s *Store) Delete(path ...string) (err error) {
-	key := strings.Join(path, pathSep)
-	return s.db.Delete([]byte(key), wopt)
+	key := []byte(strings.Join(path, pathSep))
+	return s.db.Delete(key, wopt)
 }
 
 // GetTree returns the values for keys under the given prefix
 func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
-	prefix := strings.Join(path, pathSep)
+	prefix := []byte(strings.Join(path, pathSep))
 
-	iter := s.getIter([]byte(prefix))
+	iter := s.getIter(prefix)
 	defer iter.Release()
 
 	for iter.Next() {
 		value := iter.Value()
 		if !s.isExpired(value) {
-			values = append(values, copyBytes(value[8:]))
+			values = append(values, utils.CopyBytes(value[8:]))
 		}
 	}
 
@@ -140,10 +142,10 @@ func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
 
 // DeleteTree deletes the values for keys under the given prefix
 func (s *Store) DeleteTree(path ...string) (err error) {
-	prefix := strings.Join(path, pathSep)
+	prefix := []byte(strings.Join(path, pathSep))
 
 	batch := &leveldb.Batch{}
-	iter := s.getIter([]byte(prefix))
+	iter := s.getIter(prefix)
 	defer iter.Release()
 
 	for iter.Next() {
@@ -223,22 +225,4 @@ func (s *Store) keeper() {
 			}
 		}
 	}
-}
-
-// Converts bytes to an uint
-func bytesToUint64(b []byte) uint64 {
-	return binary.BigEndian.Uint64(b)
-}
-
-// Converts a uint to a byte slice
-func uint64ToBytes(u uint64) []byte {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, u)
-	return buf
-}
-
-func copyBytes(b []byte) (c []byte) {
-	c = make([]byte, len(b))
-	copy(c, b)
-	return c
 }
