@@ -15,6 +15,9 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+// TODO: add key and prefix level transactions
+// Must be aligned with GC
+
 const (
 	gcInterval = uint64(time.Hour)
 	pathSep    = ":"
@@ -121,9 +124,7 @@ func (s *Store) Delete(path ...string) (err error) {
 
 // GetTree returns the values for keys under the given prefix
 func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
-	// TODO: use db snapshot
 	prefix := []byte(strings.Join(path, pathSep))
-
 	iter := s.getIter(prefix)
 	defer iter.Release()
 
@@ -139,13 +140,11 @@ func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
 
 // DeleteTree deletes the values for keys under the given prefix
 func (s *Store) DeleteTree(path ...string) (err error) {
-	// TODO: use db snapshot
 	prefix := []byte(strings.Join(path, pathSep))
-
-	batch := &leveldb.Batch{}
 	iter := s.getIter(prefix)
 	defer iter.Release()
 
+	batch := &leveldb.Batch{}
 	for iter.Next() {
 		batch.Delete(iter.Key())
 	}

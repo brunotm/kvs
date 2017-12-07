@@ -159,7 +159,7 @@ func TestBatch(t *testing.T) {
 	is.NoErr(store.Remove())
 }
 
-func BenchmarkInsertGet(b *testing.B) {
+func BenchmarkSetGet(b *testing.B) {
 	store, err := New(testPath)
 	defer store.Remove()
 
@@ -171,6 +171,29 @@ func BenchmarkInsertGet(b *testing.B) {
 		for x := 0; x < 100; x++ {
 			k := testKey + strconv.Itoa(x)
 			err := store.Set(testValue, k)
+			if err != nil {
+				panic(err)
+			}
+			_, err = store.Get(k)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func BenchmarkSetWithTTLGet(b *testing.B) {
+	store, err := New(testPath)
+	defer store.Remove()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		for x := 0; x < 100; x++ {
+			k := testKey + strconv.Itoa(x)
+			err := store.SetWithTTL(testValue, 5*time.Second, k)
 			if err != nil {
 				panic(err)
 			}
