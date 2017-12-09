@@ -52,7 +52,7 @@ func TestCRUD(t *testing.T) {
 	// Check if key exists
 	exists, err := store.Has(testKey)
 	is.NoErr(err)
-	is.True(exists == true)
+	is.True(exists)
 
 	// Get and compare previous key/value
 	value, err := store.Get(testKey)
@@ -66,7 +66,7 @@ func TestCRUD(t *testing.T) {
 	// Check key/value if exists
 	exists, err = store.Has(testKey)
 	is.NoErr(err)
-	is.True(exists == false)
+	is.True(!exists)
 
 	is.NoErr(store.Remove())
 }
@@ -85,7 +85,7 @@ func TestCRUDTTL(t *testing.T) {
 	// Check if key exists
 	exists, err := store.Has(testKey)
 	is.NoErr(err)
-	is.True(exists == true)
+	is.True(exists)
 
 	// Sleep beyond ttl
 	time.Sleep(time.Millisecond * 3)
@@ -93,7 +93,7 @@ func TestCRUDTTL(t *testing.T) {
 	// Check if expired key exists
 	exists, err = store.Has(testKey)
 	is.NoErr(err)
-	is.True(exists == false)
+	is.True(!exists)
 
 	is.NoErr(store.Remove())
 }
@@ -115,7 +115,7 @@ func TestCRUDTree(t *testing.T) {
 	for x := 0; x < 10; x++ {
 		exists, err := store.Has(testKey + strconv.Itoa(x))
 		is.NoErr(err)
-		is.True(exists == true)
+		is.True(exists)
 	}
 
 	// Get keys
@@ -130,7 +130,7 @@ func TestCRUDTree(t *testing.T) {
 	// Check key/value if exists
 	exists, err := store.Has(testKey)
 	is.NoErr(err)
-	is.True(exists == false)
+	is.True(!exists)
 
 	is.NoErr(store.Remove())
 }
