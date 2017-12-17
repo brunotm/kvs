@@ -123,7 +123,7 @@ func (s *Store) Delete(path ...string) (err error) {
 }
 
 // GetTree returns the values for keys under the given prefix
-func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
+func (s *Store) GetTree(path ...string) (entries []kvs.Entry, err error) {
 	prefix := []byte(strings.Join(path, pathSep))
 	iter := s.getIter(prefix)
 	defer iter.Release()
@@ -131,11 +131,14 @@ func (s *Store) GetTree(path ...string) (values [][]byte, err error) {
 	for iter.Next() {
 		value := iter.Value()
 		if !s.isExpired(value) {
-			values = append(values, utils.CopyBytes(value[8:]))
+			entry := kvs.Entry{}
+			entry.Key = iter.Key()
+			entry.Value = utils.CopyBytes(value[8:])
+			entries = append(entries, entry)
 		}
 	}
 
-	return values, iter.Error()
+	return entries, iter.Error()
 }
 
 // DeleteTree deletes the values for keys under the given prefix

@@ -19,7 +19,7 @@ type Store interface {
 	// Get the value for the given key
 	Get(path ...string) (value []byte, err error)
 	// GetTree returns the values for keys under the given prefix
-	GetTree(path ...string) (values [][]byte, err error)
+	GetTree(path ...string) (entries []Entry, err error)
 	// Set the value for the given key
 	Set(value []byte, path ...string) (err error)
 	// SetWithTTL the value for the given key with a time to live
@@ -46,4 +46,10 @@ type Batch interface {
 	Delete(path ...string)
 	// Commit writes the batch
 	Write() (err error)
+}
+
+// Entry is using when reading or writing multiple entries
+type Entry struct {
+	Key   []byte
+	Value []byte
 }
